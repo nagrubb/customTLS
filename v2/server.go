@@ -8,12 +8,21 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"io"
 	"log"
 	"math/big"
 	"net"
 	"net/http"
 	"time"
 )
+
+type OutOfBandHandler struct {
+	Certificate string
+}
+
+func (oob OutOfBandHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	io.WriteString(w, oob.Certificate)
+}
 
 func main() {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -49,6 +58,12 @@ func main() {
 
 	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDer})
 
+	//Simulate Out Of Band Handler (obviously this makes no sense to be on the same transport, this
+	//is just for demonstration purposes)
+	go http.ListenAndServe("localhost:8080", &OutOfBandHandler{
+		Certificate: string(certPem),
+	})
+
 	privDer, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {
 		log.Fatalf("Unable to marshal private key: %v", err)
@@ -63,10 +78,12 @@ func main() {
 
 	cfg := &tls.Config{Certificates: []tls.Certificate{cert}}
 	srv := &http.Server{
+		Addr:         "localhost:443",
 		TLSConfig:    cfg,
 		ReadTimeout:  time.Minute,
 		WriteTimeout: time.Minute,
 	}
 
+	//Create TLS transport
 	log.Fatal(srv.ListenAndServeTLS("", ""))
 }

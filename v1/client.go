@@ -32,7 +32,7 @@ func verifyPeerCertificate(rawCerts [][]byte, verifiedChains [][]*x509.Certifica
 }
 
 func main() {
-	conn, err := tls.Dial("tcp", "127.0.0.1:443", &tls.Config{
+	conn, err := tls.Dial("tcp", "localhost:443", &tls.Config{
 		InsecureSkipVerify:    true,
 		VerifyPeerCertificate: verifyPeerCertificate,
 	})
@@ -42,4 +42,5 @@ func main() {
 	}
 
 	conn.Close()
+	fmt.Println("Success!")
 }
